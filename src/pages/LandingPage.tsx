@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router";
 import { Icon } from "@iconify/react";
 import { Button } from "../components/ui/Button";
 import { RulesModal } from "../components/game/RulesModal";
 
 export const LandingPage: React.FC = () => {
+    const navigate = useNavigate();
     const [isRulesOpen, setIsRulesOpen] = useState(false);
 
     return (
@@ -41,7 +43,7 @@ export const LandingPage: React.FC = () => {
                         variant="primary"
                         size="xl"
                         className="w-full text-2xl"
-                        onClick={() => console.log("Start Single Player")}
+                        onClick={() => navigate("/config", { state: { mode: "single" } })}
                     >
                         <Icon icon="mdi:account" width="28" />
                         Single Player
@@ -51,7 +53,7 @@ export const LandingPage: React.FC = () => {
                         variant="secondary"
                         size="xl"
                         className="w-full text-2xl"
-                        onClick={() => console.log("Start Multiplayer")}
+                        onClick={() => navigate("/multiplayer")}
                     >
                         <Icon icon="mdi:account-group" width="28" />
                         Multiplayer
