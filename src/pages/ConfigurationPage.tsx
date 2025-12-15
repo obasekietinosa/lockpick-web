@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Icon } from "@iconify/react";
+import { api } from "../services/api";
 
 export const ConfigurationPage = () => {
     const location = useLocation();
@@ -12,13 +13,48 @@ export const ConfigurationPage = () => {
     const [hintsEnabled, setHintsEnabled] = useState(true);
     const [pinLength, setPinLength] = useState(5);
     const [timerDuration, setTimerDuration] = useState(30);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Config submitted:", { mode, name, hintsEnabled, pinLength, timerDuration });
-        // TODO: Navigate to game or lobby
-        // For now, just go back to home as a placeholder or stay here.
-        // navigate("/game"); 
+
+        if (mode === "multiplayer") {
+            setIsLoading(true);
+            try {
+                const response = await api.createGame({
+                    player_name: name,
+                    hints_enabled: hintsEnabled,
+                    pin_length: pinLength,
+                    timer_duration: timerDuration,
+                    is_private: true // Default to true for now
+                });
+                console.log("Game created:", response);
+                // Navigate to game/lobby with the room_id
+                // Assuming we have a route like /game/:roomId or similar, or we pass state
+                // For now, let's navigate to a lobby or game page with state
+                navigate("/game", { state: { ...response, mode: "multiplayer" } });
+            } catch (error) {
+                console.error("Failed to create game:", error);
+                // TODO: Show error notification
+                alert("Failed to create game. Please try again.");
+            } finally {
+                setIsLoading(false);
+            }
+        } else {
+            console.log("Config submitted (Single Player):", { mode, name, hintsEnabled, pinLength, timerDuration });
+            // Single player logic (client-side only for now)
+            navigate("/game", {
+                state: {
+                    mode: "single",
+                    config: {
+                        player_name: name,
+                        hints_enabled: hintsEnabled,
+                        pin_length: pinLength,
+                        timer_duration: timerDuration
+                    }
+                }
+            });
+        }
     };
 
     return (
@@ -56,6 +92,7 @@ export const ConfigurationPage = () => {
                                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-slate-900/50 border border-slate-600 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 focus:outline-none text-white transition-all placeholder:text-slate-600"
                                 placeholder="Enter your name"
                                 required
+                                disabled={isLoading}
                             />
                         </div>
                     </div>
@@ -68,6 +105,7 @@ export const ConfigurationPage = () => {
                         <button
                             type="button"
                             onClick={() => setHintsEnabled(!hintsEnabled)}
+                            disabled={isLoading}
                             className={`relative w-14 h-7 rounded-full p-1 transition-colors duration-300 ${hintsEnabled ? "bg-cyan-500" : "bg-slate-600"
                                 }`}
                         >
@@ -97,6 +135,7 @@ export const ConfigurationPage = () => {
                                         checked={pinLength === len}
                                         onChange={() => setPinLength(len)}
                                         className="sr-only"
+                                        disabled={isLoading}
                                     />
                                     <span className="text-xl font-bold">{len}</span>
                                     <span className="text-xs">digits</span>
@@ -114,6 +153,7 @@ export const ConfigurationPage = () => {
                             onChange={(e) => setTimerDuration(Number(e.target.value))}
                             className="w-full p-3 rounded-lg bg-slate-900/50 border border-slate-600 focus:border-cyan-400 focus:outline-none text-white transition-all appearance-none"
                             style={{ backgroundImage: 'none' }} // Remove default arrow if needed, or keeping it simple
+                            disabled={isLoading}
                         >
                             <option value={0}>No Timer (Relaxed)</option>
                             <option value={30}>30 Seconds (Blitz)</option>
@@ -126,15 +166,21 @@ export const ConfigurationPage = () => {
                         <button
                             type="button"
                             onClick={() => navigate(-1)}
-                            className="flex-1 px-6 py-3 rounded-xl border border-slate-600 text-slate-300 font-bold hover:bg-slate-800 transition-all"
+                            disabled={isLoading}
+                            className="flex-1 px-6 py-3 rounded-xl border border-slate-600 text-slate-300 font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
                         >
                             Back
                         </button>
                         <button
                             type="submit"
-                            className="flex-[2] bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-cyan-500/20 transform transition hover:scale-[1.02] active:scale-[0.98]"
+                            disabled={isLoading}
+                            className="flex-[2] bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-cyan-500/20 transform transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
-                            Start Game
+                            {isLoading ? (
+                                <Icon icon="eos-icons:loading" width="24" className="animate-spin" />
+                            ) : (
+                                "Start Game"
+                            )}
                         </button>
                     </div>
                 </form>

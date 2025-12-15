@@ -1,17 +1,34 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Icon } from "@iconify/react";
+import { api } from "../services/api";
 
 export const JoinGamePage = () => {
     const navigate = useNavigate();
     const [name, setName] = useState("");
     const [gameId, setGameId] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleJoin = (e: React.FormEvent) => {
+    const handleJoin = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Joining game:", { name, gameId });
-        // TODO: Implement join logic
-        // navigate("/lobby or /game");
+
+        setIsLoading(true);
+        try {
+            console.log("Joining game:", { name, gameId });
+            const response = await api.joinGame({
+                player_name: name,
+                room_id: gameId
+            });
+            console.log("Game joined:", response);
+            // Navigate to game/lobby with the response data (config etc)
+            navigate("/game", { state: { ...response, mode: "multiplayer" } });
+        } catch (error) {
+            console.error("Failed to join game:", error);
+            // TODO: Better error handling
+            alert("Failed to join game. Please check the Game ID and try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -48,6 +65,7 @@ export const JoinGamePage = () => {
                                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-slate-900/50 border border-slate-600 focus:border-purple-400 focus:ring-1 focus:ring-purple-400 focus:outline-none text-white transition-all placeholder:text-slate-600"
                                 placeholder="Enter your name"
                                 required
+                                disabled={isLoading}
                             />
                         </div>
                     </div>
@@ -65,6 +83,7 @@ export const JoinGamePage = () => {
                                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-slate-900/50 border border-slate-600 focus:border-purple-400 focus:ring-1 focus:ring-purple-400 focus:outline-none text-white transition-all placeholder:text-slate-600"
                                 placeholder="Paste game link or ID"
                                 required
+                                disabled={isLoading}
                             />
                         </div>
                     </div>
@@ -73,15 +92,21 @@ export const JoinGamePage = () => {
                         <button
                             type="button"
                             onClick={() => navigate(-1)}
-                            className="flex-1 px-6 py-3 rounded-xl border border-slate-600 text-slate-300 font-bold hover:bg-slate-800 transition-all"
+                            disabled={isLoading}
+                            className="flex-1 px-6 py-3 rounded-xl border border-slate-600 text-slate-300 font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
                         >
                             Back
                         </button>
                         <button
                             type="submit"
-                            className="flex-[2] bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/20 transform transition hover:scale-[1.02] active:scale-[0.98]"
+                            disabled={isLoading}
+                            className="flex-[2] bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/20 transform transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
-                            Join Game
+                            {isLoading ? (
+                                <Icon icon="eos-icons:loading" width="24" className="animate-spin" />
+                            ) : (
+                                "Join Game"
+                            )}
                         </button>
                     </div>
                 </form>
