@@ -43,7 +43,7 @@ export const ConfigurationPage = () => {
         } else {
             console.log("Config submitted (Single Player):", { mode, name, hintsEnabled, pinLength, timerDuration });
             // Single player logic (client-side only for now)
-            navigate("/game", {
+            navigate("/select-pin", {
                 state: {
                     mode: "single",
                     config: {
