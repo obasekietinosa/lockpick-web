@@ -32,7 +32,7 @@ export const ConfigurationPage = () => {
                 // Navigate to game/lobby with the room_id
                 // Assuming we have a route like /game/:roomId or similar, or we pass state
                 // For now, let's navigate to a lobby or game page with state
-                navigate("/game", { state: { ...response, mode: "multiplayer" } });
+                navigate("/select-pin", { state: { ...response, mode: "multiplayer" } });
             } catch (error) {
                 console.error("Failed to create game:", error);
                 // TODO: Show error notification

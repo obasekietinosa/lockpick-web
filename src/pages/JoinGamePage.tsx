@@ -21,7 +21,7 @@ export const JoinGamePage = () => {
             });
             console.log("Game joined:", response);
             // Navigate to game/lobby with the response data (config etc)
-            navigate("/game", { state: { ...response, mode: "multiplayer" } });
+            navigate("/select-pin", { state: { ...response, mode: "multiplayer" } });
         } catch (error) {
             console.error("Failed to join game:", error);
             // TODO: Better error handling
