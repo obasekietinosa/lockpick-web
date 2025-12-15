@@ -24,7 +24,7 @@ export interface RoundResult {
 }
 
 // SP Bot config
-const OPPONENT_GUESS_INTERVAL = 4000;
+const OPPONENT_GUESS_INTERVAL = 2000;
 
 export const useGameLogic = (config: GameConfig) => {
     // Game State
@@ -175,10 +175,6 @@ export const useGameLogic = (config: GameConfig) => {
             timerRef.current = setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
-                        endRound('draw', 'timeout'); // Draw on timeout? Or loss? README: "In single player mode, if the player runs out of time, they have lost"
-                        // But wait, if they have lost, does opponent win?
-                        // "A player wins when they win the most rounds."
-                        // So if player runs out of time, they lose the round -> Opponent wins round.
                         return 0;
                     }
                     return prev - 1;
