@@ -13,8 +13,8 @@ export const GuessHistory = ({ guesses }: GuessHistoryProps) => {
 
     return (
         <div className="flex flex-col gap-3 w-full max-w-md mx-auto max-h-[400px] overflow-y-auto p-4 custom-scrollbar">
-            {guesses.map((guess, idx) => (
-                <div key={guess.timestamp || idx} className="animate-in slide-in-from-bottom-4 duration-500">
+            {[...guesses].reverse().map((guess, idx) => (
+                <div key={guess.timestamp || idx} className="animate-in slide-in-from-top-4 duration-500">
                     <PinDisplay values={guess.values} feedback={guess.feedback} />
                 </div>
             ))}

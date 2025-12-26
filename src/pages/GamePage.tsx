@@ -118,9 +118,9 @@ export const GamePage = () => {
             <main className="flex-1 max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-12 gap-6 pb-20">
 
                 {/* Left: Player History */}
-                <div className="md:col-span-3 order-2 md:order-1 flex flex-col gap-2">
+                <div className="md:col-span-3 flex flex-col gap-2">
                     <h3 className="text-center text-slate-400 text-sm uppercase tracking-wider font-bold mb-2">Your Guesses</h3>
-                    <div className="bg-slate-800/50 rounded-2xl border border-slate-700 flex-1 min-h-[300px] shadow-inner relative">
+                    <div className="bg-slate-800/50 rounded-2xl border border-slate-700 flex-1 min-h-[150px] md:min-h-[300px] shadow-inner relative">
                         <div className="absolute inset-0 overflow-hidden rounded-2xl">
                             <GuessHistory guesses={guesses} />
                         </div>
@@ -128,7 +128,7 @@ export const GamePage = () => {
                 </div>
 
                 {/* Center: Interaction */}
-                <div className="md:col-span-6 order-1 md:order-2 flex flex-col items-center justify-start space-y-8 pt-4">
+                <div className="md:col-span-6 flex flex-col items-center justify-start space-y-8 pt-4">
 
                     {/* Timer */}
                     <GameTimer timeLeft={timeLeft} totalTime={config.timerDuration} />
@@ -172,7 +172,7 @@ export const GamePage = () => {
                 </div>
 
                 {/* Right: Opponent Status */}
-                <div className="md:col-span-3 order-3 flex flex-col gap-2">
+                <div className="md:col-span-3 flex flex-col gap-2">
                     <h3 className="text-center text-slate-400 text-sm uppercase tracking-wider font-bold mb-2">Opponent's Last Move</h3>
                     <div className="bg-slate-800/50 rounded-2xl border border-slate-700 flex-1 min-h-[300px] shadow-inner p-4 flex flex-col">
 
