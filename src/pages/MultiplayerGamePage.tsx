@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 // import { Icon } from "@iconify/react";
-import { socketService, WebSocketMessage } from "../services/socket";
+import { socketService } from "../services/socket";
+import type { WebSocketMessage } from "../services/socket";
 
 // Reusing some UI components from GamePage or creating new ones inline for now
 // to ensure we capture the multiplayer logic correctly.
@@ -118,6 +119,11 @@ export const MultiplayerGamePage = () => {
                     <div className="font-bold text-cyan-400">{state.config.player_name} (You)</div>
                     <div className="text-2xl">{myScore} - {opponentScore}</div>
                     <div className="font-bold text-pink-400">Opponent</div>
+                    {gameStatus !== "playing" && (
+                         <div className={`mt-2 font-bold ${gameStatus === "won" ? "text-green-400" : "text-red-400"}`}>
+                             {gameStatus.toUpperCase()}
+                         </div>
+                    )}
                 </div>
              </div>
 

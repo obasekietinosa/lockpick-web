@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Icon } from "@iconify/react";
 import { api } from "../services/api";
-import { socketService, WebSocketMessage } from "../services/socket";
+import { socketService } from "../services/socket";
+import type { WebSocketMessage } from "../services/socket";
 
 interface GameState {
     mode: "single" | "multiplayer";
