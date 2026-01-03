@@ -41,7 +41,8 @@ export const MultiplayerGamePage = () => {
     // const [turn, setTurn] = useState<"me" | "opponent">("me"); // Or maybe simultaneous?
 
     useEffect(() => {
-        if (!state || state.mode !== "multiplayer") {
+        if (!state || state.mode !== "multiplayer" || !state.config) {
+            console.error("Invalid game state:", state);
             navigate("/");
             return;
         }
@@ -88,6 +89,11 @@ export const MultiplayerGamePage = () => {
             unsubscribe();
         };
     }, [state, navigate]);
+
+    // Safety check: if state is invalid, don't render content (useEffect will redirect)
+    if (!state || !state.config) {
+        return null;
+    }
 
     const handleGuessSubmit = (e: React.FormEvent) => {
         e.preventDefault();

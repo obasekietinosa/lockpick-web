@@ -21,15 +21,22 @@ export const ConfigurationPage = () => {
         if (mode === "multiplayer") {
             setIsLoading(true);
             try {
-                const response = await api.createGame({
+                const gameConfig = {
                     player_name: name,
                     hints_enabled: hintsEnabled,
                     pin_length: pinLength,
                     timer_duration: timerDuration,
                     is_private: true // Default to true for now
-                });
+                };
+                const response = await api.createGame(gameConfig);
                 console.log("Game created:", response);
-                navigate("/select-pin", { state: { ...response, mode: "multiplayer" } });
+                navigate("/select-pin", {
+                    state: {
+                        ...response,
+                        mode: "multiplayer",
+                        config: gameConfig
+                    }
+                });
             } catch (error) {
                 console.error("Failed to create game:", error);
                 alert("Failed to create game. Please try again.");
