@@ -18,6 +18,10 @@ export interface JoinGameResponse {
     status: string;
 }
 
+export interface SubmitPinPayload {
+    pins: string[];
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.lockpick.co';
 
 export const api = {
@@ -56,5 +60,20 @@ export const api = {
         }
 
         return response.json();
+    },
+
+    submitPin: async (roomId: string, playerId: string, pins: string[]): Promise<void> => {
+        const response = await fetch(`${API_BASE_URL}/games/${roomId}/players/${playerId}/pin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ pins }),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Failed to submit pin: ${text}`);
+        }
     }
 };

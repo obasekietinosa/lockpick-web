@@ -29,20 +29,15 @@ export const ConfigurationPage = () => {
                     is_private: true // Default to true for now
                 });
                 console.log("Game created:", response);
-                // Navigate to game/lobby with the room_id
-                // Assuming we have a route like /game/:roomId or similar, or we pass state
-                // For now, let's navigate to a lobby or game page with state
                 navigate("/select-pin", { state: { ...response, mode: "multiplayer" } });
             } catch (error) {
                 console.error("Failed to create game:", error);
-                // TODO: Show error notification
                 alert("Failed to create game. Please try again.");
             } finally {
                 setIsLoading(false);
             }
         } else {
             console.log("Config submitted (Single Player):", { mode, name, hintsEnabled, pinLength, timerDuration });
-            // Single player logic (client-side only for now)
             navigate("/select-pin", {
                 state: {
                     mode: "single",
