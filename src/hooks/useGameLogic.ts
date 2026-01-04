@@ -199,7 +199,7 @@ export const useGameLogic = (config: GameConfig) => {
         } else {
             setIsGameOver(true);
         }
-    }, [currentRound, config.maxRounds, config.mode, startRound]);
+    }, [currentRound, config.maxRounds, config.mode, startRound, pendingRoundStart, config.roomId, config.playerId]);
 
     // Opponent Logic (Bot)
     const opponentMakeGuess = useCallback(() => {
@@ -230,10 +230,18 @@ export const useGameLogic = (config: GameConfig) => {
 
     // Multiplayer Socket Listeners
     useEffect(() => {
-        if (config.mode !== 'multiplayer') return;
+        if (config.mode !== 'multiplayer' || !config.roomId) return;
 
         const handleMessage = (msg: WebSocketMessage) => {
-            // console.log("Hook Recv:", msg);
+            // Critical: Filter messages by room_id
+            const msgRoomId = msg.payload?.room_id;
+
+            // Note: game_start messages might come from global channel?
+            // But we are in-game, so we expect messages for THIS room.
+            if (msgRoomId && msgRoomId !== config.roomId) {
+                // console.log("Ignoring message for other room:", msgRoomId);
+                return;
+            }
 
             if (msg.type === 'guess_result') {
                 const { player_id, guess, hints } = msg.payload;
@@ -254,9 +262,10 @@ export const useGameLogic = (config: GameConfig) => {
                 }
             }
             else if (msg.type === 'round_end') {
-                console.log('Round End Received:', msg.payload);
+                console.log('Round End Received for Room:', config.roomId, msg.payload);
                 const { winner_id, scores } = msg.payload || {};
 
+                // Use loose equality for safety if IDs are numbers vs strings, though they should be strings.
                 const winner = winner_id === config.playerId ? 'player' : (winner_id ? 'opponent' : 'draw');
 
                 // Update scores
@@ -275,6 +284,7 @@ export const useGameLogic = (config: GameConfig) => {
             }
             else if (msg.type === 'round_start') {
                 const { round } = msg.payload;
+                console.log('Round Start Received:', round);
 
                 // If we are currently showing a round result modal (implied by round > 1),
                 // we MUST wait for the user to dismiss it before starting the next round.
@@ -290,7 +300,6 @@ export const useGameLogic = (config: GameConfig) => {
                 // const { winner_id } = msg.payload;
                 // Ensure scores are final?
                 setIsGameOver(true);
-                // Maybe set a specific game result state if needed, but isGameOver triggers modal
             }
         };
 
