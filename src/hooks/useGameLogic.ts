@@ -44,6 +44,9 @@ export const useGameLogic = (config: GameConfig) => {
     const [isRoundActive, setIsRoundActive] = useState(false);
     const [roundResult, setRoundResult] = useState<RoundResult | null>(null);
 
+    // Pending Round Start (for MP race conditions)
+    const [pendingRoundStart, setPendingRoundStart] = useState<number | null>(null);
+
     // Opponent State
     const [opponentGuesses, setOpponentGuesses] = useState<Guess[]>([]);
 
@@ -172,7 +175,21 @@ export const useGameLogic = (config: GameConfig) => {
         setRoundResult(null); // Clear modal when user acknowledges
 
         if (config.mode === 'multiplayer') {
-            // Server handles round progression.
+            // Check for pending round start
+            if (pendingRoundStart !== null) {
+                console.log("Consuming pending round start:", pendingRoundStart);
+                startRound(pendingRoundStart);
+                setPendingRoundStart(null);
+            }
+
+            // Notify server we are ready for next round (if supported/required)
+            if (config.roomId && config.playerId) {
+                socketService.sendMessage({
+                    type: 'player_ready',
+                    room_id: config.roomId,
+                    player_id: config.playerId
+                });
+            }
             return;
         }
 
@@ -237,22 +254,37 @@ export const useGameLogic = (config: GameConfig) => {
                 }
             }
             else if (msg.type === 'round_end') {
-                const { winner_id, scores } = msg.payload;
+                console.log('Round End Received:', msg.payload);
+                const { winner_id, scores } = msg.payload || {};
+
+                const winner = winner_id === config.playerId ? 'player' : (winner_id ? 'opponent' : 'draw');
 
                 // Update scores
-                if (scores) {
-                    setPlayerScore(scores[config.playerId!] || 0);
+                if (scores && config.playerId) {
+                    setPlayerScore(scores[config.playerId] || 0);
                     // Find opponent score
                     const opponentId = Object.keys(scores).find(id => id !== config.playerId);
                     if (opponentId) setOpponentScore(scores[opponentId]);
+                } else {
+                    // Fallback score update if scores not provided
+                    if (winner === 'player') setPlayerScore(s => s + 1);
+                    if (winner === 'opponent') setOpponentScore(s => s + 1);
                 }
 
-                const winner = winner_id === config.playerId ? 'player' : (winner_id ? 'opponent' : 'draw');
-                endRound(winner, 'guessed'); // Or 'timeout'? Payload doesn't say reason, assume guessed or server handled it
+                endRound(winner, 'guessed');
             }
             else if (msg.type === 'round_start') {
                 const { round } = msg.payload;
-                startRound(round);
+
+                // If we are currently showing a round result modal (implied by round > 1),
+                // we MUST wait for the user to dismiss it before starting the next round.
+                // We queue the round start.
+                if (round > 1) {
+                    console.log("Queueing round start:", round);
+                    setPendingRoundStart(round);
+                } else {
+                    startRound(round);
+                }
             }
             else if (msg.type === 'game_end') {
                 // const { winner_id } = msg.payload;
@@ -289,6 +321,15 @@ export const useGameLogic = (config: GameConfig) => {
             if (opponentTimerRef.current) clearInterval(opponentTimerRef.current);
         };
     }, [isRoundActive, config.timerDuration, config.mode, endRound, opponentMakeGuess]);
+
+    // Auto-consume pending round start if modal is closed
+    useEffect(() => {
+        if (pendingRoundStart !== null && roundResult === null) {
+            console.log("Auto-consuming pending round start:", pendingRoundStart);
+            startRound(pendingRoundStart);
+            setPendingRoundStart(null);
+        }
+    }, [pendingRoundStart, roundResult, startRound]);
 
     // Timeout Logic
     useEffect(() => {
