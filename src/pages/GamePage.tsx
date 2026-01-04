@@ -238,6 +238,16 @@ export const GamePage = () => {
                     onExit={() => navigate('/')}
                 />
             )}
+
+            {/* Waiting Overlay for Multiplayer */}
+            {!isRoundActive && !roundResult && !isGameOver && config.mode === 'multiplayer' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center gap-4 p-8 bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl">
+                        <Icon icon="mdi:loading" width="48" className="animate-spin text-cyan-400" />
+                        <p className="text-lg text-slate-300 font-medium tracking-wide">Waiting for opponent...</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
