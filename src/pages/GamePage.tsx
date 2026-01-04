@@ -31,6 +31,8 @@ export const GamePage = () => {
         timerDuration: state?.config?.timer_duration || 180, // Default 3 mins
         maxRounds: 3,
         mode: state?.mode || 'single',
+        roomId: state?.room_id,
+        playerId: state?.player_id,
     };
 
     // Get current round's player pin
