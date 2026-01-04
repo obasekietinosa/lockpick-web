@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { socketService, WebSocketMessage } from '../services/socket';
+import { socketService, type WebSocketMessage } from '../services/socket';
 
 export type GuessFeedback = 'correct' | 'present' | 'absent';
 
@@ -255,7 +255,7 @@ export const useGameLogic = (config: GameConfig) => {
                 startRound(round);
             }
             else if (msg.type === 'game_end') {
-                const { winner_id } = msg.payload;
+                // const { winner_id } = msg.payload;
                 // Ensure scores are final?
                 setIsGameOver(true);
                 // Maybe set a specific game result state if needed, but isGameOver triggers modal
