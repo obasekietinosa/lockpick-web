@@ -68,7 +68,7 @@ export const SelectPinPage = () => {
 
     // Poll for game start if waiting (fallback for lost WS messages)
     useEffect(() => {
-        let intervalId: NodeJS.Timeout;
+        let intervalId: ReturnType<typeof setInterval>;
 
         if (isWaiting && state.mode === "multiplayer" && state.room_id) {
             const checkGameStatus = async () => {
