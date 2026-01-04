@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { socketService, type WebSocketMessage } from '../services/socket';
 
 export type GuessFeedback = 'correct' | 'present' | 'absent';
 
@@ -13,8 +14,10 @@ export interface GameConfig {
     hintsEnabled: boolean;
     timerDuration: number; // in seconds
     maxRounds: number;
-    playerPins?: string[]; // CHANGED: Now accepts array of strings for all rounds
+    playerPins?: string[];
     mode: 'single' | 'multiplayer';
+    roomId?: string;
+    playerId?: string;
 }
 
 export interface RoundResult {
@@ -56,8 +59,6 @@ export const useGameLogic = (config: GameConfig) => {
 
     const calculateFeedback = useCallback((guess: string[], secret: string[]): GuessFeedback[] => {
         const feedback: GuessFeedback[] = Array(guess.length).fill('absent');
-        // Note: This logic assumes digits are '0'-'9'.
-
         const usedSecretIndices = new Set<number>();
         const usedGuessIndices = new Set<number>();
 
@@ -74,7 +75,6 @@ export const useGameLogic = (config: GameConfig) => {
         if (config.hintsEnabled) {
             for (let i = 0; i < guess.length; i++) {
                 if (!usedGuessIndices.has(i)) {
-                    // Look for this digit in secret where it hasn't been matched yet
                     for (let j = 0; j < secret.length; j++) {
                         if (!usedSecretIndices.has(j) && secret[j] === guess[i]) {
                             feedback[i] = 'present';
@@ -89,24 +89,56 @@ export const useGameLogic = (config: GameConfig) => {
         return feedback;
     }, [config.hintsEnabled]);
 
+    const mapServerHints = useCallback((hints: number[]): GuessFeedback[] => {
+        return hints.map(h => {
+            if (h === 2) return 'correct';
+            if (h === 1) return 'present';
+            return 'absent';
+        });
+    }, []);
+
 
     // --- Actions ---
 
-    const startRound = useCallback(() => {
-        const newPin = generatePin(config.pinLength);
-        setSecretPin(newPin);
+    const startRound = useCallback((roundNum?: number) => {
+        if (config.mode === 'single') {
+            const newPin = generatePin(config.pinLength);
+            setSecretPin(newPin);
+        }
+        // In multiplayer, secretPin is unknown/managed by server
+
+        if (roundNum) setCurrentRound(roundNum);
+
         setGuesses([]);
         setOpponentGuesses([]);
         setCurrentGuess(Array(config.pinLength).fill(''));
         setTimeLeft(config.timerDuration);
-        setRoundResult(null);
+        // Do not clear roundResult here; let the user dismiss the modal via nextRound
         setIsRoundActive(true);
-    }, [config.pinLength, config.timerDuration, generatePin]);
+    }, [config.pinLength, config.timerDuration, config.mode, generatePin]);
 
     const submitGuess = useCallback(() => {
         if (!isRoundActive) return;
         if (currentGuess.some(digit => digit === '')) return;
 
+        if (config.mode === 'multiplayer') {
+             if (!config.roomId || !config.playerId) return;
+
+             socketService.sendMessage({
+                 type: 'guess',
+                 room_id: config.roomId,
+                 player_id: config.playerId,
+                 payload: {
+                     guess: currentGuess.join(''),
+                     room_id: config.roomId, // Redundant but safe based on server types
+                     player_id: config.playerId
+                 }
+             });
+             // We don't update local state yet; wait for server response
+             return;
+        }
+
+        // Single Player Logic
         const feedback = calculateFeedback(currentGuess, secretPin);
         const newGuess: Guess = {
             values: [...currentGuess],
@@ -120,34 +152,44 @@ export const useGameLogic = (config: GameConfig) => {
         if (feedback.every(f => f === 'correct')) {
             endRound('player', 'guessed');
         }
-    }, [isRoundActive, currentGuess, secretPin, calculateFeedback, config.pinLength]);
+    }, [isRoundActive, currentGuess, secretPin, calculateFeedback, config.pinLength, config.mode, config.roomId, config.playerId]);
 
     const endRound = useCallback((winner: 'player' | 'opponent' | 'draw', reason: 'guessed' | 'timeout' | 'surrender') => {
         setIsRoundActive(false);
         if (timerRef.current) clearInterval(timerRef.current);
         if (opponentTimerRef.current) clearInterval(opponentTimerRef.current);
 
-        setRoundResult({ winner, reason, score: 0 });
+        setRoundResult({ winner, reason, score: 0 }); // Score is tracked globally
 
-        if (winner === 'player') setPlayerScore(s => s + 1);
-        if (winner === 'opponent') setOpponentScore(s => s + 1);
-    }, []);
+        if (config.mode === 'single') {
+            if (winner === 'player') setPlayerScore(s => s + 1);
+            if (winner === 'opponent') setOpponentScore(s => s + 1);
+        }
+        // In multiplayer, score comes from server or we update it based on events
+    }, [config.mode]);
 
     const nextRound = useCallback(() => {
+        setRoundResult(null); // Clear modal when user acknowledges
+
+        if (config.mode === 'multiplayer') {
+            // Server handles round progression.
+            return;
+        }
+
         if (currentRound < config.maxRounds) {
             setCurrentRound(prev => prev + 1);
             startRound();
         } else {
             setIsGameOver(true);
         }
-    }, [currentRound, config.maxRounds, startRound]);
+    }, [currentRound, config.maxRounds, config.mode, startRound]);
 
-    // Opponent Logic
+    // Opponent Logic (Bot)
     const opponentMakeGuess = useCallback(() => {
         const currentRoundIndex = currentRound - 1;
         const playerSecretStr = config.playerPins?.[currentRoundIndex];
 
-        if (!playerSecretStr) return; // Should not happen if correctly configured
+        if (!playerSecretStr) return;
 
         const botGuess = generatePin(config.pinLength);
         const playerSecret = playerSecretStr.split('');
@@ -169,14 +211,68 @@ export const useGameLogic = (config: GameConfig) => {
 
     // --- Effects ---
 
-    // Timer Logic
+    // Multiplayer Socket Listeners
+    useEffect(() => {
+        if (config.mode !== 'multiplayer') return;
+
+        const handleMessage = (msg: WebSocketMessage) => {
+            // console.log("Hook Recv:", msg);
+
+            if (msg.type === 'guess_result') {
+                const { player_id, guess, hints } = msg.payload;
+                const guessArr = guess.split('');
+                const feedback = mapServerHints(hints || []);
+
+                const newGuess: Guess = {
+                    values: guessArr,
+                    feedback,
+                    timestamp: Date.now()
+                };
+
+                if (player_id === config.playerId) {
+                    setGuesses(prev => [newGuess, ...prev]);
+                    setCurrentGuess(Array(config.pinLength).fill('')); // Clear input
+                } else {
+                    setOpponentGuesses(prev => [newGuess, ...prev]);
+                }
+            }
+            else if (msg.type === 'round_end') {
+                const { winner_id, scores } = msg.payload;
+
+                // Update scores
+                if (scores) {
+                    setPlayerScore(scores[config.playerId!] || 0);
+                    // Find opponent score
+                    const opponentId = Object.keys(scores).find(id => id !== config.playerId);
+                    if (opponentId) setOpponentScore(scores[opponentId]);
+                }
+
+                const winner = winner_id === config.playerId ? 'player' : (winner_id ? 'opponent' : 'draw');
+                endRound(winner, 'guessed'); // Or 'timeout'? Payload doesn't say reason, assume guessed or server handled it
+            }
+            else if (msg.type === 'round_start') {
+                const { round } = msg.payload;
+                startRound(round);
+            }
+            else if (msg.type === 'game_end') {
+                // const { winner_id } = msg.payload;
+                // Ensure scores are final?
+                setIsGameOver(true);
+                // Maybe set a specific game result state if needed, but isGameOver triggers modal
+            }
+        };
+
+        const unsubscribe = socketService.subscribe(handleMessage);
+        return () => unsubscribe();
+    }, [config.mode, config.playerId, config.pinLength, mapServerHints, endRound, startRound, config.roomId]);
+
+
+    // Timer Logic (Local)
     useEffect(() => {
         if (isRoundActive && config.timerDuration > 0) {
             timerRef.current = setInterval(() => {
                 setTimeLeft(prev => {
-                    if (prev <= 1) {
-                        return 0;
-                    }
+                    if (prev <= 1) return 0;
                     return prev - 1;
                 });
             }, 1000);
@@ -194,14 +290,14 @@ export const useGameLogic = (config: GameConfig) => {
         };
     }, [isRoundActive, config.timerDuration, config.mode, endRound, opponentMakeGuess]);
 
-    // Update Round End Logic for Timeout in SP
-    // If timer hits 0, and we are in SP, player loses -> Opponent wins.
+    // Timeout Logic
     useEffect(() => {
         if (timeLeft === 0 && isRoundActive) {
             if (config.mode === 'single') {
                 endRound('opponent', 'timeout');
             } else {
-                endRound('draw', 'timeout');
+                // In MP, server handles timeout. We just wait for round_end msg.
+                // But we can stop local timer.
             }
         }
     }, [timeLeft, isRoundActive, config.mode, endRound]);
@@ -209,6 +305,8 @@ export const useGameLogic = (config: GameConfig) => {
 
     // Initial Start
     useEffect(() => {
+        // In multiplayer, we might need to wait for start, OR we are already started.
+        // If we are here, round 1 is likely active.
         startRound();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

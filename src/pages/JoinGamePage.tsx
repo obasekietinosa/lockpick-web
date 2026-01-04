@@ -1,13 +1,23 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import { Icon } from "@iconify/react";
 import { api } from "../services/api";
 
 export const JoinGamePage = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+
     const [name, setName] = useState("");
     const [gameId, setGameId] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    // Auto-fill from URL
+    useEffect(() => {
+        const roomFromUrl = searchParams.get("room");
+        if (roomFromUrl) {
+            setGameId(roomFromUrl);
+        }
+    }, [searchParams]);
 
     const handleJoin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -15,9 +25,16 @@ export const JoinGamePage = () => {
         setIsLoading(true);
         try {
             console.log("Joining game:", { name, gameId });
+            // Clean up game ID in case they pasted a full URL
+            let cleanGameId = gameId.trim();
+            if (cleanGameId.includes('?room=')) {
+                cleanGameId = cleanGameId.split('?room=')[1];
+            }
+            // Basic UUID check or length check? Nah, let API handle it.
+
             const response = await api.joinGame({
                 player_name: name,
-                room_id: gameId
+                room_id: cleanGameId
             });
             console.log("Game joined:", response);
             // Navigate to game/lobby with the response data (config etc)

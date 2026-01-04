@@ -21,28 +21,30 @@ export const ConfigurationPage = () => {
         if (mode === "multiplayer") {
             setIsLoading(true);
             try {
-                const response = await api.createGame({
+                const gameConfig = {
                     player_name: name,
                     hints_enabled: hintsEnabled,
                     pin_length: pinLength,
                     timer_duration: timerDuration,
                     is_private: true // Default to true for now
-                });
+                };
+                const response = await api.createGame(gameConfig);
                 console.log("Game created:", response);
-                // Navigate to game/lobby with the room_id
-                // Assuming we have a route like /game/:roomId or similar, or we pass state
-                // For now, let's navigate to a lobby or game page with state
-                navigate("/select-pin", { state: { ...response, mode: "multiplayer" } });
+                navigate("/select-pin", {
+                    state: {
+                        ...response,
+                        mode: "multiplayer",
+                        config: gameConfig
+                    }
+                });
             } catch (error) {
                 console.error("Failed to create game:", error);
-                // TODO: Show error notification
                 alert("Failed to create game. Please try again.");
             } finally {
                 setIsLoading(false);
             }
         } else {
             console.log("Config submitted (Single Player):", { mode, name, hintsEnabled, pinLength, timerDuration });
-            // Single player logic (client-side only for now)
             navigate("/select-pin", {
                 state: {
                     mode: "single",
