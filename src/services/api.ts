@@ -75,5 +75,20 @@ export const api = {
             const text = await response.text();
             throw new Error(`Failed to submit pin: ${text}`);
         }
+    },
+
+    getGame: async (roomId: string): Promise<JoinGameResponse> => {
+        const response = await fetch(`${API_BASE_URL}/games/${roomId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get game state: ${response.statusText}`);
+        }
+
+        return response.json();
     }
 };

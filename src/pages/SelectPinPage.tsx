@@ -66,6 +66,40 @@ export const SelectPinPage = () => {
         }
     }, [state, navigate, pins]);
 
+    // Poll for game start if waiting (fallback for lost WS messages)
+    useEffect(() => {
+        let intervalId: NodeJS.Timeout;
+
+        if (isWaiting && state.mode === "multiplayer" && state.room_id) {
+            const checkGameStatus = async () => {
+                try {
+                    const game = await api.getGame(state.room_id!);
+                    if (game.status === "playing") {
+                        console.log("Game started (polled)!", game);
+                        navigate("/game", {
+                            state: {
+                                ...state,
+                                pins: pins,
+                                gameStarted: true,
+                                initialPayload: { room_id: game.room_id, status: game.status }
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error("Failed to poll game status:", error);
+                }
+            };
+
+            // Check immediately and then every 2 seconds
+            checkGameStatus();
+            intervalId = setInterval(checkGameStatus, 2000);
+        }
+
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [isWaiting, state, navigate, pins]);
+
     // Auto-focus first input when round changes
     useEffect(() => {
         const firstInput = document.getElementById(`pin-${activeRound}-0`);
